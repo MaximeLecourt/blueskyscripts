@@ -50,8 +50,7 @@ def main():
             created_at=client.get_current_time_iso()
         )
         if not dryRun:
-            pprint( "Actually Blocking" )
-            #uri = client.app.bsky.graph.block.create(client.me.did, block_record).uri
+            uri = client.app.bsky.graph.block.create(client.me.did, block_record).uri
 
 
 if __name__ == '__main__':
