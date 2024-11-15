@@ -6,6 +6,19 @@ from atproto import Client, client_utils, models
 from pprint import pprint
 
 
+def block_user(client=None, tgtUserHandle=None, tgtUserDID=None, dryRun=False):
+    print( f'blocking user: {tgtUserHandle} with DID: {tgtUserDID}' )
+    block_record = models.AppBskyGraphBlock.Record(
+        subject=tgtUserDID,
+        created_at=client.get_current_time_iso()
+    )
+    if not dryRun:
+        try:
+            #uri = client.app.bsky.graph.block.create(client.me.did, block_record).uri
+            print( f'>> blocked user: {tgtUserHandle} with DID: {tgtUserDID}' )
+        except Exception as e:
+            print( f'ERROR: Somethign went wrong: {e}')
+
 def main():
 
     #arg parse flags
@@ -22,19 +35,19 @@ def main():
     #Login
     client = Client()
     profile = client.login(settings.login,settings.password)
+    myDID = profile.did
 
     #Get the followers of the tgt user
     data = client.get_profile(actor=blockFollowersOf)
-    did = data.did
-    display_name = data.display_name
+    tgtDID = data.did
 
-    print( f'Blocking all followers of username: {display_name} with DID: {did}' )
+    print( f'Blocking all followers of username: {blockFollowersOf} with DID: {tgtDID}' )
 
     cursor = None
     followers = []
     #Loops over til the cursor returns blank
     while True:
-        data = client.get_followers(actor=did,cursor=cursor)
+        data = client.get_followers(actor=tgtDID,cursor=cursor)
         cursor = data.cursor
         followers.extend( data.followers )
         if not cursor:
@@ -44,13 +57,11 @@ def main():
     for follower in followers:
         tgtUserHandle = follower.handle
         tgtUserDID = follower.did
-        print( f'blocking user: {tgtUserHandle} with DID: {tgtUserDID}' )
-        block_record = models.AppBskyGraphBlock.Record(
-            subject=tgtUserDID, 
-            created_at=client.get_current_time_iso()
-        )
-        if not dryRun:
-            uri = client.app.bsky.graph.block.create(client.me.did, block_record).uri
+        block_user(client=client, tgtUserHandle=tgtUserHandle, tgtUserDID=tgtUserDID, dryRun=dryRun)
+
+
+    #Block the actual target
+    block_user(client=client, tgtUserHandle=blockFollowersOf, tgtUserDID=tgtDID, dryRun=dryRun)
 
 
 if __name__ == '__main__':
