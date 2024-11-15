@@ -14,7 +14,7 @@ def block_user(client=None, tgtUserHandle=None, tgtUserDID=None, dryRun=False):
     )
     if not dryRun:
         try:
-            #uri = client.app.bsky.graph.block.create(client.me.did, block_record).uri
+            uri = client.app.bsky.graph.block.create(client.me.did, block_record).uri
             print( f'>> blocked user: {tgtUserHandle} with DID: {tgtUserDID}' )
         except Exception as e:
             print( f'ERROR: Somethign went wrong: {e}')
