@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 
 import settings
+import sys
 import argparse
 from atproto import Client, client_utils, models
 from pprint import pprint
@@ -50,7 +51,12 @@ def main():
 
     #Login
     client = Client()
-    profile = client.login(settings.login,settings.password)
+    try:
+        profile = client.login(settings.login,settings.password)
+    except Exception as e:
+        print( f'ERROR: Somethign went wrong: {e}')
+        sys.exit(1)
+
 
     #Get the followers of the tgt user
     data = client.get_profile(actor=blockFollowersOf)
