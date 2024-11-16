@@ -6,6 +6,38 @@ import argparse
 from atproto import Client, client_utils, models
 from pprint import pprint
 
+def login(settings=None,sessionFile=None):
+  client = Client()
+  profile = None
+
+  if sessionFile:
+    try:
+      print( f'Attempting to read session from {sessionFile}' )
+      with open(sessionFile, 'r') as f:
+        session_string = f.read()
+      profile = client.login(session_string=session_string)
+      print( f'Succeeded reading session from {sessionFile}' )
+    except FileNotFoundError as e:
+      print( f'Session file {sessionFile} does not exist, will try logging in' )
+    except Exception as e:
+      print( f'Failed logging in from session file {sessionFile}, will try re-logging in' )
+
+  if not profile:
+    try:
+      print( f'Attempting to login with username/password' )
+      profile = client.login(settings.login,settings.password)
+      session_string = client.export_session_string()
+      print( f'Succeeded logging in with username/password' )
+      if sessionFile:
+        pprint( f'Attempting to write session to {sessionFile}' )
+        with open(sessionFile, 'w') as f:
+          f.write(session_string)
+        print( f'Succeeded writing session to {sessionFile}' )
+    except Exception as e:
+      print( f'ERROR: Somethign went wrong: {e}')
+      sys.exit(1)
+
+  return client
 
 def block_user(client=None, tgtUserHandle=None, tgtUserDID=None, dryRun=False):
     print( f'blocking user: {tgtUserHandle} with DID: {tgtUserDID}' )
@@ -15,7 +47,7 @@ def block_user(client=None, tgtUserHandle=None, tgtUserDID=None, dryRun=False):
     )
     if not dryRun:
         try:
-            uri = client.app.bsky.graph.block.create(client.me.did, block_record).uri
+            result = client.app.bsky.graph.block.create(client.me.did, block_record)
             print( f'>> blocked user: {tgtUserHandle} with DID: {tgtUserDID}' )
         except Exception as e:
             print( f'ERROR: Somethign went wrong: {e}')
@@ -29,10 +61,12 @@ def add_user_to_blocklist(client=None, tgtUserHandle=None, tgtUserDID=None, list
     )
     if not dryRun:
         try:
-            client.app.bsky.graph.listitem.create(client.me.did,list_record)
+            result = client.app.bsky.graph.listitem.create(client.me.did,list_record)
             print( f'>> Added user: {tgtUserHandle} with DID: {tgtUserDID} to block list ${listURI}' )
         except Exception as e:
             print( f'ERROR: Somethign went wrong: {e}')
+
+
 
 def main():
 
@@ -41,22 +75,18 @@ def main():
         prog='blueSkyChainBlocking',
         description='Blocks everyone who follows the the target user.',
     )
-    parser.add_argument('--blockfollowers', dest="blockFollowersOf", help="The username of the user who you want to block all their followers of")
+    parser.add_argument('--blockfollowers', dest="blockFollowersOf", help="The username of the user who you want to block all their followers of.")
     parser.add_argument('--list', dest="listURI", help="The at:/ uri to a block list.")
-    parser.add_argument('--dryrun', dest="dryRun", action='store_true', help="Do not actually execute the blocks")
+    parser.add_argument('--dryrun', dest="dryRun", action='store_true', help="Do not actually execute the blocks.")
+    parser.add_argument('--sessionFile', dest="sessionFile", default=None, help="optional session file to cache login. Useful to avoid rate limiting.")
     args = parser.parse_args()
     blockFollowersOf = args.blockFollowersOf
     dryRun=args.dryRun
     listURI=args.listURI
+    sessionFile=args.sessionFile
 
-    #Login
-    client = Client()
-    try:
-        profile = client.login(settings.login,settings.password)
-    except Exception as e:
-        print( f'ERROR: Somethign went wrong: {e}')
-        sys.exit(1)
-
+    #login
+    client = login(settings, sessionFile )
 
     #Get the followers of the tgt user
     data = client.get_profile(actor=blockFollowersOf)
