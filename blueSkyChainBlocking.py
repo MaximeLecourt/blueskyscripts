@@ -4,6 +4,7 @@ import settings
 import sys
 import argparse
 from atproto import Client, client_utils, models
+from atproto.exceptions import RequestException
 from pprint import pprint
 
 def login(settings=None,sessionFile=None):
@@ -50,6 +51,12 @@ def block_user(client=None, tgtUserHandle=None, tgtUserDID=None, dryRun=False):
     try:
       result = client.app.bsky.graph.block.create(client.me.did, block_record)
       print( f'>> blocked user: {tgtUserHandle} with DID: {tgtUserDID}' )
+    except RequestException as e:
+      if e.args[0].status_code == '429':
+        print("ERROR: We have been ratelimited. Aborting...")
+        sys.exit(429)
+      else:
+        print( f'ERROR: Somethign went wrong: {e}')
     except Exception as e:
       print( f'ERROR: Somethign went wrong: {e}')
 
