@@ -20,6 +20,7 @@ def login(settings=None,sessionFile=None):
     except FileNotFoundError as e:
       print( f'Session file {sessionFile} does not exist, will try logging in' )
     except Exception as e:
+      client = Client() 
       print( f'Failed logging in from session file {sessionFile}, will try re-logging in' )
 
   if not profile:
