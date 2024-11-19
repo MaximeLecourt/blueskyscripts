@@ -61,7 +61,6 @@ def block_user(client=None, tgtUserHandle=None, tgtUserDID=None, dryRun=False):
       print( f'ERROR: Somethign went wrong: {e}')
 
 def add_user_to_blocklist(client=None, tgtUserHandle=None, tgtUserDID=None, listURI=None, dryRun=False):
-  # It only works for normal lists, not moderation lists
   list_record = models.AppBskyGraphListitem.Record(
     subject=tgtUserDID,
     created_at=client.get_current_time_iso(),
