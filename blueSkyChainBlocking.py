@@ -5,6 +5,7 @@ import sys
 import argparse
 from atproto import Client, client_utils, models
 from atproto.exceptions import RequestException
+from time import sleep
 from pprint import pprint
 
 def login(settings=None,sessionFile=None):
@@ -31,7 +32,7 @@ def login(settings=None,sessionFile=None):
       session_string = client.export_session_string()
       print( f'Succeeded logging in with username/password' )
       if sessionFile:
-        pprint( f'Attempting to write session to {sessionFile}' )
+        print( f'Attempting to write session to {sessionFile}' )
         with open(sessionFile, 'w') as f:
           f.write(session_string)
         print( f'Succeeded writing session to {sessionFile}' )
@@ -52,13 +53,13 @@ def block_user(client=None, tgtUserHandle=None, tgtUserDID=None, dryRun=False):
       result = client.app.bsky.graph.block.create(client.me.did, block_record)
       print( f'>> blocked user: {tgtUserHandle} with DID: {tgtUserDID}' )
     except RequestException as e:
-      if e.args[0].status_code == '429':
+      if e.args[0].status_code == 429:
         print("ERROR: We have been ratelimited. Aborting...")
         sys.exit(429)
       else:
-        print( f'ERROR: Somethign went wrong: {e}')
+        print( f'ERROR: RequestException Something went wrong: {e}')
     except Exception as e:
-      print( f'ERROR: Somethign went wrong: {e}')
+      print( f'ERROR: Exception Something went wrong: {e}')
 
 def add_user_to_blocklist(client=None, tgtUserHandle=None, tgtUserDID=None, listURI=None, dryRun=False):
   list_record = models.AppBskyGraphListitem.Record(
@@ -71,7 +72,7 @@ def add_user_to_blocklist(client=None, tgtUserHandle=None, tgtUserDID=None, list
       result = client.app.bsky.graph.listitem.create(client.me.did,list_record)
       print( f'>> Added user: {tgtUserHandle} with DID: {tgtUserDID} to block list ${listURI}' )
     except Exception as e:
-      print( f'ERROR: Somethign went wrong: {e}')
+      print( f'ERROR: Something went wrong: {e}')
 
 
 
@@ -86,11 +87,13 @@ def main():
   parser.add_argument('--list', dest="listURI", help="The at:/ uri to a block list.")
   parser.add_argument('--dryrun', dest="dryRun", action='store_true', help="Do not actually execute the blocks.")
   parser.add_argument('--sessionFile', dest="sessionFile", default=None, help="optional session file to cache login. Useful to avoid rate limiting.")
+  parser.add_argument('--sleep', dest="sleepBetweenBlocks", default=1, help="optional time to delay between blocks to avoid rate limit. Default: 1")
   args = parser.parse_args()
   blockFollowersOf = args.blockFollowersOf
   dryRun=args.dryRun
   listURI=args.listURI
   sessionFile=args.sessionFile
+  sleepBetweenBlocks=int(args.sleepBetweenBlocks)
 
   #login
   client = login(settings, sessionFile )
@@ -115,6 +118,7 @@ def main():
   for follower in followers:
     tgtUserHandle = follower.handle
     tgtUserDID = follower.did
+    sleep(sleepBetweenBlocks)
     block_user(client=client, tgtUserHandle=tgtUserHandle, tgtUserDID=tgtUserDID, dryRun=dryRun)
   
     #Add users to the block list
