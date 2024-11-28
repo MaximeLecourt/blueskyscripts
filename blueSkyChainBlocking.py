@@ -114,6 +114,13 @@ def main():
     if not cursor:
       break
 
+  #Block the actual target
+  block_user(client=client, tgtUserHandle=blockFollowersOf, tgtUserDID=tgtDID, dryRun=dryRun)
+
+  #Add users to the block list
+  if listURI:
+    add_user_to_blocklist(client=client, tgtUserHandle=blockFollowersOf, tgtUserDID=tgtDID, listURI=listURI, dryRun=dryRun)
+
   #Loop through followers and start blocking
   for follower in followers:
     tgtUserHandle = follower.handle
@@ -125,12 +132,6 @@ def main():
     if listURI:
       add_user_to_blocklist(client=client, tgtUserHandle=blockFollowersOf, tgtUserDID=tgtDID, listURI=listURI, dryRun=dryRun)
 
-  #Block the actual target
-  block_user(client=client, tgtUserHandle=blockFollowersOf, tgtUserDID=tgtDID, dryRun=dryRun)
-
-  #Add users to the block list
-  if listURI:
-    add_user_to_blocklist(client=client, tgtUserHandle=blockFollowersOf, tgtUserDID=tgtDID, listURI=listURI, dryRun=dryRun)
 
 
 if __name__ == '__main__':
