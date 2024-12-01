@@ -74,6 +74,16 @@ def add_user_to_blocklist(client=None, tgtUserHandle=None, tgtUserDID=None, list
     except Exception as e:
       print( f'ERROR: Something went wrong: {e}')
 
+def get_list_at( listName=None, client=None):
+    at_uri = None
+    myDID = client.me.did
+    params={'actor': myDID}
+    myLists =  client.app.bsky.graph.get_lists(params)
+    for myList in myLists['lists']:
+      if myList.name == listName:
+        at_uri = myList.uri
+    return at_uri
+
 
 
 def main():
@@ -84,13 +94,15 @@ def main():
     description='Blocks everyone who follows the the target user.',
   )
   parser.add_argument('--blockfollowers', dest="blockFollowersOf", help="The username of the user who you want to block all their followers of.")
-  parser.add_argument('--list', dest="listURI", help="The at:/ uri to a block list.")
+  parser.add_argument('--list', dest="listName", help="The name of the list.")
+  parser.add_argument('--listURI', dest="listURI", help="The at:/ uri to a block list.")
   parser.add_argument('--dryrun', dest="dryRun", action='store_true', help="Do not actually execute the blocks.")
   parser.add_argument('--sessionFile', dest="sessionFile", default=None, help="optional session file to cache login. Useful to avoid rate limiting.")
   parser.add_argument('--sleep', dest="sleepBetweenBlocks", default=1, help="optional time to delay between blocks to avoid rate limit. Default: 1")
   args = parser.parse_args()
   blockFollowersOf = args.blockFollowersOf
   dryRun=args.dryRun
+  listName=args.listName
   listURI=args.listURI
   sessionFile=args.sessionFile
   sleepBetweenBlocks=int(args.sleepBetweenBlocks)
@@ -101,6 +113,13 @@ def main():
   #Get the followers of the tgt user
   data = client.get_profile(actor=blockFollowersOf)
   tgtDID = data.did
+
+  #Get the list at:// uri
+  if listName:
+    listURI = get_list_at( listName=listName, client=client)
+  if listName and not listURI:
+    print( f'ERROR: List {listName} not found' )
+    sys.exit(1)
 
   print( f'Blocking all followers of username: {blockFollowersOf} with DID: {tgtDID}' )
 
@@ -130,7 +149,7 @@ def main():
   
     #Add users to the block list
     if listURI:
-      add_user_to_blocklist(client=client, tgtUserHandle=blockFollowersOf, tgtUserDID=tgtDID, listURI=listURI, dryRun=dryRun)
+      add_user_to_blocklist(client=client, tgtUserHandle=tgtUserHandle, tgtUserDID=tgtUserDID, listURI=listURI, dryRun=dryRun)
 
 
 
