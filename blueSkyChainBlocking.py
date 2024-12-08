@@ -128,7 +128,7 @@ def main():
   parser.add_argument('--blockBlockListMembersofURL', dest="blockMembersListUrl", default=None, help="Block all members of Block list.")
 
   args = parser.parse_args()
-  blockFollowersOf = args.blockFollowersOf
+  blockFollowersOf = args.blockFollowersOf.replace('@','')
   dryRun=args.dryRun
   listName=args.listName
   listURI=args.listURI
