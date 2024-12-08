@@ -74,16 +74,42 @@ def add_user_to_blocklist(client=None, tgtUserHandle=None, tgtUserDID=None, list
     except Exception as e:
       print( f'ERROR: Something went wrong: {e}')
 
-def get_list_at( listName=None, client=None):
+def get_list_at( listName=None, listURL=None, client=None):
     at_uri = None
-    myDID = client.me.did
-    params={'actor': myDID}
+
+    if listURL:
+      listURLSplit = listURL.split('/')
+      actor = listURLSplit[4]
+      listID = listURLSplit[6]
+    else:
+      actor = client.me.did
+      listID = None
+
+    params={'actor': actor}
     myLists =  client.app.bsky.graph.get_lists(params)
+
     for myList in myLists['lists']:
-      if myList.name == listName:
+      if listID:
+        if listID in myList.uri:
+          at_uri = myList.uri
+      elif myList.name == listName:
         at_uri = myList.uri
     return at_uri
 
+def get_list_members( listAT=None, client=None ):
+    listMembers = []
+    cursor=None
+
+    #Loops over til the cursor returns blank
+    while True:
+      params={'list': listAT, 'cursor': cursor }
+      data = client.app.bsky.graph.get_list(params)
+      cursor = data.cursor
+      listMembers.extend( data.items )
+      if not cursor:
+        break
+
+    return listMembers
 
 
 def main():
@@ -99,6 +125,8 @@ def main():
   parser.add_argument('--dryrun', dest="dryRun", action='store_true', help="Do not actually execute the blocks.")
   parser.add_argument('--sessionFile', dest="sessionFile", default=None, help="optional session file to cache login. Useful to avoid rate limiting.")
   parser.add_argument('--sleep', dest="sleepBetweenBlocks", default=1, help="optional time to delay between blocks to avoid rate limit. Default: 1")
+  parser.add_argument('--blockBlockListMembersofURL', dest="blockMembersListUrl", default=None, help="Block all members of Block list.")
+
   args = parser.parse_args()
   blockFollowersOf = args.blockFollowersOf
   dryRun=args.dryRun
@@ -106,50 +134,67 @@ def main():
   listURI=args.listURI
   sessionFile=args.sessionFile
   sleepBetweenBlocks=int(args.sleepBetweenBlocks)
+  blockMembersListUrl=args.blockMembersListUrl
 
   #login
   client = login(settings, sessionFile )
 
   #Get the followers of the tgt user
-  data = client.get_profile(actor=blockFollowersOf)
-  tgtDID = data.did
-
-  #Get the list at:// uri
-  if listName:
-    listURI = get_list_at( listName=listName, client=client)
-  if listName and not listURI:
-    print( f'ERROR: List {listName} not found' )
-    sys.exit(1)
-
-  print( f'Blocking all followers of username: {blockFollowersOf} with DID: {tgtDID}' )
-
-  cursor = None
-  followers = []
-  #Loops over til the cursor returns blank
-  while True:
-    data = client.get_followers(actor=tgtDID,cursor=cursor)
-    cursor = data.cursor
-    followers.extend( data.followers )
-    if not cursor:
-      break
+  if blockFollowersOf:
+    data = client.get_profile(actor=blockFollowersOf)
+    tgtDID = data.did
+    print( f'Blocking all followers of username: {blockFollowersOf} with DID: {tgtDID}' )
+    cursor = None
+    followers = []
+    #Loops over til the cursor returns blank
+    while True:
+      data = client.get_followers(actor=tgtDID,cursor=cursor)
+      cursor = data.cursor
+      followers.extend( data.followers )
+      if not cursor:
+        break
+  else:
+    followers=None
 
   #Block the actual target
-  block_user(client=client, tgtUserHandle=blockFollowersOf, tgtUserDID=tgtDID, dryRun=dryRun)
+  if blockFollowersOf and tgtDID:
+    #Get the list at:// uri
+    if listName:
+      listURI = get_list_at( listName=listName, client=client)
+      print( listURI )
+    if listName and not listURI:
+      print( f'ERROR: List {listName} not found' )
+      sys.exit(1)
 
-  #Add users to the block list
-  if listURI:
-    add_user_to_blocklist(client=client, tgtUserHandle=blockFollowersOf, tgtUserDID=tgtDID, listURI=listURI, dryRun=dryRun)
-
-  #Loop through followers and start blocking
-  for follower in followers:
-    tgtUserHandle = follower.handle
-    tgtUserDID = follower.did
-    sleep(sleepBetweenBlocks)
-    block_user(client=client, tgtUserHandle=tgtUserHandle, tgtUserDID=tgtUserDID, dryRun=dryRun)
+    block_user(client=client, tgtUserHandle=blockFollowersOf, tgtUserDID=tgtDID, dryRun=dryRun)
   
     #Add users to the block list
     if listURI:
-      add_user_to_blocklist(client=client, tgtUserHandle=tgtUserHandle, tgtUserDID=tgtUserDID, listURI=listURI, dryRun=dryRun)
+      add_user_to_blocklist(client=client, tgtUserHandle=blockFollowersOf, tgtUserDID=tgtDID, listURI=listURI, dryRun=dryRun)
+
+    #Loop through followers and start blocking
+    for follower in followers:
+      tgtUserHandle = follower.handle
+      tgtUserDID = follower.did
+      sleep(sleepBetweenBlocks)
+      block_user(client=client, tgtUserHandle=tgtUserHandle, tgtUserDID=tgtUserDID, dryRun=dryRun)
+  
+      #Add users to the block list
+      if listURI:
+        add_user_to_blocklist(client=client, tgtUserHandle=tgtUserHandle, tgtUserDID=tgtUserDID, listURI=listURI, dryRun=dryRun)
+
+  #Block memebers of list
+  if blockMembersListUrl and not followers:
+    count = 0
+    listURI = get_list_at( listURL=blockMembersListUrl, client=client)
+    print( listURI )
+    listMembers = get_list_members( listAT=listURI, client=client )
+    for listMember in listMembers:
+      tgtUserHandle = listMember.subject.handle
+      tgtUserDID = listMember.subject.did
+      count = count + 1
+      sleep(sleepBetweenBlocks)
+      block_user(client=client, tgtUserHandle=tgtUserHandle, tgtUserDID=tgtUserDID, dryRun=dryRun)
 
 
 
