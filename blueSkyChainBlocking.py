@@ -111,6 +111,23 @@ def get_list_members( listAT=None, client=None ):
 
     return listMembers
 
+def get_follows( did=None, client=None):
+  follows = []
+  cursor=None
+
+  #Loops over til the cursor returns blank
+  while True:
+    params={'actor': did, 'cursor': cursor }
+    data = client.app.bsky.graph.get_follows(params)
+    for x in data.follows:
+      follows.extend( [x.did] )
+    cursor = data.cursor
+    if not cursor:
+      break
+
+  return follows
+
+
 
 def main():
 
@@ -126,6 +143,7 @@ def main():
   parser.add_argument('--sessionFile', dest="sessionFile", default=None, help="optional session file to cache login. Useful to avoid rate limiting.")
   parser.add_argument('--sleep', dest="sleepBetweenBlocks", default=1, help="optional time to delay between blocks to avoid rate limit. Default: 1")
   parser.add_argument('--blockBlockListMembersofURL', dest="blockMembersListUrl", default=None, help="Block all members of Block list.")
+  parser.add_argument('--blockYourFollows', dest="dontBlockYourFollows", action='store_false', help="Block people you follow.")
 
   args = parser.parse_args()
   blockFollowersOf = args.blockFollowersOf.replace('@','')
@@ -135,12 +153,18 @@ def main():
   sessionFile=args.sessionFile
   sleepBetweenBlocks=int(args.sleepBetweenBlocks)
   blockMembersListUrl=args.blockMembersListUrl
+  dontBlockYourFollows=args.dontBlockYourFollows
 
   #login
   client = login(settings, sessionFile )
 
   #Get the followers of the tgt user
   if blockFollowersOf:
+    if dontBlockYourFollows:
+      yourFollows = get_follows( did=client.me.did, client=client )
+    else:
+      yourFollows = []
+
     data = client.get_profile(actor=blockFollowersOf)
     tgtDID = data.did
     print( f'Blocking all followers of username: {blockFollowersOf} with DID: {tgtDID}' )
@@ -176,12 +200,17 @@ def main():
     for follower in followers:
       tgtUserHandle = follower.handle
       tgtUserDID = follower.did
-      sleep(sleepBetweenBlocks)
-      block_user(client=client, tgtUserHandle=tgtUserHandle, tgtUserDID=tgtUserDID, dryRun=dryRun)
+      if tgtUserDID not in yourFollows:
+        sleep(sleepBetweenBlocks)
+        block_user(client=client, tgtUserHandle=tgtUserHandle, tgtUserDID=tgtUserDID, dryRun=dryRun)
+      else:
+        print( f'## Skipping known follower Handle: {tgtUserHandle} DID: {tgtUserDID}' )
   
       #Add users to the block list
       if listURI:
-        add_user_to_blocklist(client=client, tgtUserHandle=tgtUserHandle, tgtUserDID=tgtUserDID, listURI=listURI, dryRun=dryRun)
+        if tgtUserDID not in yourFollows:
+          sleep(sleepBetweenBlocks)
+          add_user_to_blocklist(client=client, tgtUserHandle=tgtUserHandle, tgtUserDID=tgtUserDID, listURI=listURI, dryRun=dryRun)
 
   #Block memebers of list
   if blockMembersListUrl and not followers:
