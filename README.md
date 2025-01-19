@@ -16,3 +16,5 @@
 * Block all memebers of a list:
   * `python3 blueSkyChainBlocking.py  --blockBlockListMembersofURL=${URLofList}  --sessionFile=./session.txt  --sleep=1`
 
+* Clean up old likes older then 30 days.
+  * `python3 blueSkyCleanUp.py --likes=30`
