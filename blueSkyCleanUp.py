@@ -88,7 +88,15 @@ def main():
       uri = post.viewer.like
       record = post.record
       likedAt = record.created_at
-      likedAtDateTime = datetime.strptime(likedAt, '%Y-%m-%dT%H:%M:%S.%fZ')
+
+      try: 
+        likedAtDateTime = datetime.strptime(likedAt, '%Y-%m-%dT%H:%M:%S.%fZ')
+      except:
+        try: 
+          likedAtDateTime = datetime.strptime(likedAt, '%Y-%m-%dT%H:%M:%S%z').replace(tzinfo=None)
+        except:
+          continue
+      
       timeDelta = now - likedAtDateTime
 
       if timeDelta.days >= likesOlderThan:
