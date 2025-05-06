@@ -1,6 +1,8 @@
 #API Token
 * Goto https://bsky.app/settings/app-passwords and create an APP Password
 * Copy the info into settings.py (see settings.py.example)
+* For login, use the handle without the @ (example bsky.app for https://bsky.app/profile/bsky.app)
+* For password, use the APP Password created at step 1
 
 #Install
 * Create virtual env and activate it
