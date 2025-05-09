@@ -46,7 +46,7 @@ def main():
 
   #arg parse flags
   parser = argparse.ArgumentParser(
-    prog='blueSkyChainBlocking',
+    prog='blueSkyIsBlocked',
     description='Check if user is blocked by another specific user',
   )
   parser.add_argument('--did', dest="tgtUserDID", help="The DID of the user you want to check.")
@@ -55,22 +55,25 @@ def main():
   
   args = parser.parse_args()
   tgtUserDID = args.tgtUserDID
-  refUserDID = args.refUserDID
+  refUserDID = args.refUserDID.replace('@','')
   sessionFile=args.sessionFile
-  
 
   #login
   client = login(settings, sessionFile)
+
   
   # get list of accounts blocked by the reference user
   blocked_accounts = client.app.bsky.graph.block.list(repo=refUserDID)
+  #print(f"Blocked accounts by {refUserDID}:")
+  #print(blocked_accounts)
 
-  # check if the target user is in the list of blocked accounts
-  if tgtUserDID in blocked_accounts:
+  # Check if the target user is in the list of blocked accounts
+  is_blocked = any(record.subject == tgtUserDID for record in blocked_accounts.records.values())
+
+  if is_blocked:
     print(f"The user {tgtUserDID} is blocked by {refUserDID}.")
   else:
     print(f"The user {tgtUserDID} is not blocked by {refUserDID}.")
-
 
 if __name__ == '__main__':
   main()
