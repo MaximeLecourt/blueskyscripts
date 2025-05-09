@@ -4,19 +4,20 @@
 * For login, use the handle without the @ (example bsky.app for https://bsky.app/profile/bsky.app)
 * For password, use the APP Password created at step 1
 
+#UNIX
+* on Unix systems, use python3 instead of python command
+
 #Install
-* Create virtual env and activate it
+* Create virtual env and activate it with the following command
+  * python -m venv .venv
 * pip install -r requirements.txt
 
 #USAGE
-* Block followers of a user (Chain Blocking):
+* Check if given user is blocked by reference user
   * Reuses session if possible to avoid rate limiting.
-  * Sleeps 1 sec between blocks to avoid spamming api endpoint
-  * `python3 blueSkyChainBlocking.py  --blockfollowers=${userNameToBlock}  --sessionFile=./session.txt  --sleep=1`
-* Block but also add your users to a list of yours (moderation or normal)
-  * `python3 blueSkyChainBlocking.py  --blockfollowers=${userNameToBlock}  --list=${nameOfYourList} --sessionFile=./session.txt  --sleep=1`
-* Block all memebers of a list:
-  * `python3 blueSkyChainBlocking.py  --blockBlockListMembersofURL=${URLofList}  --sessionFile=./session.txt  --sleep=1`
-
-* Clean up old likes older then 30 days.
-  * `python3 blueSkyCleanUp.py --likes=30`
+  * Sleeps 1 sec between commands to avoid spamming api endpoint
+  * did : given user
+  * handle : reference user
+  * sessionFile : optional session file to cache login
+  * `python .\blueSkyIsBlocked.py  --did="did:plc:m5ibvdgcxm4y5psuttiukunj"  --handle="did:plc:vcds5wbo25cln5wx5ttd4vjx"  --sessionFile=./session.txt --sleep=1`
+  * Here, the script will check if --did user is blocked by --handle user
